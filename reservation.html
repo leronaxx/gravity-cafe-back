@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Бронирование — Gravity Café</title>
+  </head>
+  <body>
+    <header class="site-nav">
+      <div class="container nav-inner">
+        <a class="brand" href="index.html">Gravity Café</a>
+        <nav class="nav-links">
+          <a href="index.html">Главная</a>
+          <a href="reservation.html">Бронирование</a>
+          <a href="menu.html">Меню и заказ</a>
+          <a href="about.html">О нас</a>
+          <a class="btn btn-primary" href="#" id="nav-auth-btn">Войти</a>
+        </nav>
+        <button class="nav-toggle" aria-label="Открыть меню">☰</button>
+      </div>
+      <div class="container mobile-menu">
+        <a href="index.html">Главная</a>
+        <a href="reservation.html">Бронирование</a>
+        <a href="menu.html">Меню и заказ</a>
+        <a href="about.html">О нас</a>
+        <a class="btn btn-primary" href="#" id="nav-auth-btn-mobile">Войти</a>
+      </div>
+    </header>
+
+    <main>
+      <section class="hero" style="padding-top: 130px">
+        <div class="container hero-content hero-center">
+          <div class="hero-text">
+            <div class="badge reveal" data-reveal>Онлайн-бронирование</div>
+            <h1 class="reveal" data-reveal>Выберите столик и зону</h1>
+            <p class="muted reveal" data-reveal>
+              Укажите дату, время, количество гостей и желаемую зону. Мы
+              подготовим стол и встретим вас с идеальным кофе.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section class="section" style="padding-top: 50px">
+        <div class="container">
+          <form
+            id="reservation-form"
+            class="card"
+            style="max-width: 900px; margin: 0 auto"
+          >
+            <div class="badge">Шаг 1</div>
+            <h3>Выберите зону</h3>
+            <div class="feature-grid" id="area-choices">
+              <div class="skeleton skeleton-card"></div>
+              <div class="skeleton skeleton-card"></div>
+              <div class="skeleton skeleton-card"></div>
+            </div>
+
+            <div class="divider"></div>
+            <div class="badge">Шаг 2</div>
+            <h3>Выберите дату и время</h3>
+            <div class="form-grid">
+              <div>
+                <label for="res-date">Дата</label>
+                <input id="res-date" type="date" required />
+              </div>
+              <div>
+                <label for="res-time">Время</label>
+                <select id="res-time" required></select>
+              </div>
+              <div>
+                <label for="res-guests">Гостей</label>
+                <select id="res-guests">
+                  <option value="1">1 гость</option>
+                  <option value="2" selected>2 гостя</option>
+                  <option value="3">3 гостя</option>
+                  <option value="4">4 гостя</option>
+                  <option value="5">5 гостей</option>
+                  <option value="6">6 гостей</option>
+                  <option value="7">7 гостей</option>
+                  <option value="8">8 гостей</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="divider"></div>
+            <div class="badge">Шаг 3</div>
+            <h3>Столик</h3>
+            <p class="muted small">
+              После выбора зоны номера столов появятся ниже.
+            </p>
+            <div id="table-grid" class="menu-grid"></div>
+
+            <div class="divider"></div>
+            <button class="btn btn-primary" type="submit" style="width: 100%">
+              Подтвердить бронирование
+            </button>
+          </form>
+
+          <div
+            id="reservation-success"
+            class="success"
+            style="display: none; max-width: 720px; margin: 20px auto 0"
+          >
+            <h3>Бронирование подтверждено 🎉</h3>
+            <p class="muted">
+              Мы зарезервировали столик №<strong id="success-table"></strong> в
+              зоне <strong id="success-area"></strong>.
+            </p>
+            <p class="muted">
+              Дата: <strong id="success-date"></strong> · Время:
+              <strong id="success-time"></strong> · Гостей:
+              <strong id="success-guests"></strong>
+            </p>
+            <p class="muted">
+              Мы свяжемся с вами по номеру <strong id="success-phone"></strong>.
+            </p>
+            <div class="hero-actions" style="justify-content: center">
+              <button class="btn" id="new-reservation">
+                Новое бронирование
+              </button>
+              <a class="btn btn-primary" href="menu.html">Сделать предзаказ</a>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <div class="container footer-grid">
+        <div>
+          <h3>Gravity Café</h3>
+          <p class="muted">
+            Уютное кафе в центре города: авторский кофе, десерты и кухня от
+            шеф-повара.
+          </p>
+        </div>
+        <div>
+          <h4>Навигация</h4>
+          <p><a href="reservation.html">Бронирование</a></p>
+          <p><a href="menu.html">Меню и заказ</a></p>
+          <p><a href="about.html">О нас</a></p>
+        </div>
+        <div>
+          <h4>Контакты</h4>
+          <p class="muted"><span data-settings="phone">+7 (495) 123-45-67</span><br /><span data-settings="email">info@gravitycafe.ru</span></p>
+          <p class="muted" data-settings="address">Ростов-На-Дону, ул. Пушкинская, 151</p>
+        </div>
+      </div>
+      <div class="container footer-note">
+        © 2025 Gravity Café.
+      </div>
+    </footer>
+
+    <div id="auth-overlay" class="auth-overlay"></div>
+    <div id="auth-modal" class="auth-modal">
+      <div class="auth-modal-inner">
+        <div class="cart-header">
+          <h3 id="auth-title">Вход</h3>
+          <button id="close-auth" class="btn">×</button>
+        </div>
+        <form id="auth-form">
+          <div id="auth-name-field" style="display:none">
+            <label for="auth-name">Ваше имя</label>
+            <input id="auth-name" type="text" placeholder="Иван Иванов" />
+          </div>
+          <div>
+            <label for="auth-phone">Телефон</label>
+            <input id="auth-phone" type="tel" placeholder="+7 (999) 123-45-67" required />
+            <p id="auth-phone-error" class="form-error" style="display:none">Введите номер в формате +7XXXXXXXXXX или 8XXXXXXXXXX</p>
+          </div>
+          <div>
+            <label for="auth-password">Пароль</label>
+            <input id="auth-password" type="password" placeholder="Минимум 6 символов" required />
+          </div>
+          <p id="auth-error" class="form-error" style="display:none"></p>
+          <button class="btn btn-primary" type="submit" style="width:100%" id="auth-submit">Войти</button>
+        </form>
+        <p class="small muted" style="margin-top:12px;text-align:center">
+          <a href="#" id="auth-toggle">Нет аккаунта? Зарегистрируйтесь</a>
+        </p>
+      </div>
+    </div>
+
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>

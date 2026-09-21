@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Профиль — Gravity Café</title>
+  </head>
+  <body>
+    <header class="site-nav">
+      <div class="container nav-inner">
+        <a class="brand" href="index.html">Gravity Café</a>
+        <nav class="nav-links">
+          <a href="index.html">Главная</a>
+          <a href="reservation.html">Бронирование</a>
+          <a href="menu.html">Меню и заказ</a>
+          <a href="about.html">О нас</a>
+          <a class="btn btn-primary" href="#" id="nav-auth-btn">Войти</a>
+        </nav>
+        <button class="nav-toggle" aria-label="Открыть меню">☰</button>
+      </div>
+      <div class="container mobile-menu">
+        <a href="index.html">Главная</a>
+        <a href="reservation.html">Бронирование</a>
+        <a href="menu.html">Меню и заказ</a>
+        <a href="about.html">О нас</a>
+        <a class="btn btn-primary" href="#" id="nav-auth-btn-mobile">Войти</a>
+      </div>
+    </header>
+
+    <main>
+      <section class="hero" style="padding-top: 130px; min-height: auto">
+        <div class="container hero-content hero-center">
+          <div class="hero-text">
+            <div class="badge reveal" data-reveal>Личный кабинет</div>
+            <h1 class="reveal" data-reveal id="profile-greeting">Ваш профиль</h1>
+          </div>
+        </div>
+      </section>
+
+      <section class="section" style="padding-top: 20px">
+        <div class="container">
+          <div id="profile-not-auth" class="card" style="display:none; text-align:center;">
+            <h3>Вы не авторизованы</h3>
+            <p class="muted">Войдите, чтобы увидеть свои данные и историю заказов.</p>
+            <button class="btn btn-primary" id="profile-login-btn" style="margin-top:12px">Войти</button>
+          </div>
+
+          <div id="profile-content" style="display:none">
+            <div class="card" style="margin-bottom:24px">
+              <h3>Данные</h3>
+              <p class="muted">Имя: <strong id="profile-name"></strong></p>
+              <p class="muted">Телефон: <strong id="profile-phone"></strong></p>
+              <button class="btn" id="logout-btn" style="margin-top:12px">Выйти</button>
+            </div>
+
+            <div style="margin-bottom:32px">
+              <h2>Мои заказы</h2>
+              <div id="profile-orders" class="profile-list"></div>
+              <p id="profile-orders-empty" class="muted" style="display:none">У вас пока нет заказов.</p>
+            </div>
+
+            <div>
+              <h2>Мои бронирования</h2>
+              <div id="profile-reservations" class="profile-list"></div>
+              <p id="profile-reservations-empty" class="muted" style="display:none">У вас пока нет бронирований.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <div class="container footer-grid">
+        <div>
+          <h3>Gravity Café</h3>
+          <p class="muted">
+            Уютное кафе в центре города: авторский кофе, десерты и кухня от
+            шеф-повара.
+          </p>
+        </div>
+        <div>
+          <h4>Навигация</h4>
+          <p><a href="reservation.html">Бронирование</a></p>
+          <p><a href="menu.html">Меню и заказ</a></p>
+          <p><a href="about.html">О нас</a></p>
+        </div>
+        <div>
+          <h4>Контакты</h4>
+          <p class="muted"><span data-settings="phone">+7 (495) 123-45-67</span><br /><span data-settings="email">info@gravitycafe.ru</span></p>
+          <p class="muted" data-settings="address">Ростов-На-Дону, ул. Пушкинская, 151</p>
+        </div>
+      </div>
+      <div class="container footer-note">© 2025 Gravity Café.</div>
+    </footer>
+
+    <div id="auth-overlay" class="auth-overlay"></div>
+    <div id="auth-modal" class="auth-modal">
+      <div class="auth-modal-inner">
+        <div class="cart-header">
+          <h3 id="auth-title">Вход</h3>
+          <button id="close-auth" class="btn">×</button>
+        </div>
+        <form id="auth-form">
+          <div id="auth-name-field" style="display:none">
+            <label for="auth-name">Ваше имя</label>
+            <input id="auth-name" type="text" placeholder="Иван Иванов" />
+          </div>
+          <div>
+            <label for="auth-phone">Телефон</label>
+            <input id="auth-phone" type="tel" placeholder="+7 (999) 123-45-67" required />
+            <p id="auth-phone-error" class="form-error" style="display:none">Введите номер в формате +7XXXXXXXXXX или 8XXXXXXXXXX</p>
+          </div>
+          <div>
+            <label for="auth-password">Пароль</label>
+            <input id="auth-password" type="password" placeholder="Минимум 6 символов" required />
+          </div>
+          <p id="auth-error" class="form-error" style="display:none"></p>
+          <button class="btn btn-primary" type="submit" style="width:100%" id="auth-submit">Войти</button>
+        </form>
+        <p class="small muted" style="margin-top:12px;text-align:center">
+          <a href="#" id="auth-toggle">Нет аккаунта? Зарегистрируйтесь</a>
+        </p>
+      </div>
+    </div>
+
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>

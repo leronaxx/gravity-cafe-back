@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Меню Gravity Café — закажите заранее</title>
+  </head>
+  <body>
+    <header class="site-nav">
+      <div class="container nav-inner">
+        <a class="brand" href="index.html">Gravity Café</a>
+        <nav class="nav-links">
+          <a href="index.html">Главная</a>
+          <a href="reservation.html">Бронирование</a>
+          <a href="menu.html">Меню и заказ</a>
+          <a href="about.html">О нас</a>
+          <a class="btn btn-primary" href="#" id="nav-auth-btn">Войти</a>
+        </nav>
+        <button class="nav-toggle" aria-label="Открыть меню">☰</button>
+      </div>
+      <div class="container mobile-menu">
+        <a href="index.html">Главная</a>
+        <a href="reservation.html">Бронирование</a>
+        <a href="menu.html">Меню и заказ</a>
+        <a href="about.html">О нас</a>
+        <a class="btn btn-primary" href="#" id="nav-auth-btn-mobile">Войти</a>
+      </div>
+    </header>
+
+    <main>
+      <section class="hero" style="padding-top: 130px">
+        <div class="container hero-content hero-center">
+          <div class="hero-text">
+            <div class="badge reveal" data-reveal>Меню и предзаказ</div>
+            <h1 class="reveal" data-reveal>Выберите блюда заранее</h1>
+            <p class="reveal" data-reveal>
+              Добавьте позиции в корзину, выберите зону, дату и время. Мы начнём
+              готовить так, чтобы всё было готово к вашему приходу.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section class="section" style="padding-top: 50px">
+        <div class="container">
+          <div
+            id="menu-tabs"
+            class="tab-list"
+            aria-label="Категории меню"
+          ></div>
+          <div id="menu-grid" class="menu-grid"></div>
+        </div>
+      </section>
+    </main>
+
+    <button id="open-cart" class="cart-fab">
+      🛒 Корзина <span class="count" id="cart-count">0</span>
+    </button>
+
+    <div id="cart-overlay" class="cart-overlay"></div>
+    <aside id="cart-panel" class="cart-panel" aria-label="Корзина">
+      <div class="cart-header">
+        <div>
+          <h3>Ваш заказ</h3>
+          <p class="small muted">Предзаказ на выбранное время</p>
+        </div>
+        <button id="close-cart" class="btn">×</button>
+      </div>
+
+      <div id="cart-empty" class="muted" style="display: none">
+        Добавьте блюда, чтобы оформить предзаказ.
+      </div>
+      <div id="cart-items" class="cart-list"></div>
+
+      <div class="divider"></div>
+
+      <div id="order-meta" class="small muted">
+        Время приготовления: <strong id="prep-time">0 минут</strong>
+      </div>
+
+      <form id="order-form" class="card" style="margin: 0">
+        <div class="form-grid">
+          <div>
+            <label for="order-date">Дата</label>
+            <input id="order-date" type="date" required />
+          </div>
+          <div>
+            <label for="order-time">Время прихода</label>
+            <select id="order-time" required></select>
+          </div>
+        </div>
+
+        <div class="form-grid">
+          <div>
+            <label for="order-area">Зона</label>
+            <select id="order-area" required></select>
+          </div>
+          <div>
+            <label for="order-table">Номер столика</label>
+            <input
+              id="order-table"
+              type="number"
+              placeholder="1"
+              min="1"
+              required
+            />
+          </div>
+        </div>
+
+        <div class="divider"></div>
+        <div class="menu-meta">
+          <span class="muted">Итого</span>
+          <div class="price" id="cart-total">0 ₽</div>
+        </div>
+        <p class="small muted">
+          Мы начнём готовить заранее, чтобы всё было свежим к указанному
+          времени.
+        </p>
+        <div
+          class="hero-actions"
+          style="justify-content: stretch; gap: 8px; flex-wrap: wrap"
+        >
+          <button class="btn" type="button" id="order-save" style="width: 100%">
+            Сохранить данные
+          </button>
+          <button class="btn btn-primary" type="submit" style="width: 100%">
+            Оформить предзаказ
+          </button>
+        </div>
+        <div id="order-save-note" class="small muted" style="display: none">
+          Данные сохранены
+        </div>
+      </form>
+
+      <div id="order-confirmation" class="success" style="display: none">
+        <h3>Заказ принят!</h3>
+        <p class="muted">
+          Спасибо, <strong id="confirm-name"></strong>. Мы ждём вас
+          <strong id="confirm-date"></strong> в
+          <strong id="confirm-time"></strong>.
+        </p>
+        <p class="muted">
+          Зона: <strong id="confirm-area"></strong>, столик №<strong
+            id="confirm-table"
+          ></strong
+          >.
+        </p>
+        <p class="muted">
+          К оплате: <strong id="confirm-total"></strong>. Начнём готовить в
+          <strong id="confirm-ready"></strong>.
+        </p>
+        <div
+          class="hero-actions"
+          style="justify-content: center; margin-top: 12px"
+        >
+          <button class="btn" id="new-order">Новый заказ</button>
+          <button class="btn btn-primary" id="close-confirmation">
+            Закрыть
+          </button>
+        </div>
+      </div>
+    </aside>
+
+    <footer>
+      <div class="container footer-grid">
+        <div>
+          <h3>Gravity Café</h3>
+          <p class="muted">
+            Уютное кафе в центре города: авторский кофе, десерты и кухня от
+            шеф-повара.
+          </p>
+        </div>
+        <div>
+          <h4>Навигация</h4>
+          <p><a href="reservation.html">Бронирование</a></p>
+          <p><a href="menu.html">Меню и заказ</a></p>
+          <p><a href="about.html">О нас</a></p>
+        </div>
+        <div>
+          <h4>Контакты</h4>
+          <p class="muted"><span data-settings="phone">+7 (495) 123-45-67</span><br /><span data-settings="email">info@gravitycafe.ru</span></p>
+          <p class="muted" data-settings="address">Ростов-На-Дону, ул. Пушкинская, 151</p>
+        </div>
+      </div>
+      <div class="container footer-note">
+        © 2025 Gravity Café.
+      </div>
+    </footer>
+
+    <div id="auth-overlay" class="auth-overlay"></div>
+    <div id="auth-modal" class="auth-modal">
+      <div class="auth-modal-inner">
+        <div class="cart-header">
+          <h3 id="auth-title">Вход</h3>
+          <button id="close-auth" class="btn">×</button>
+        </div>
+        <form id="auth-form">
+          <div id="auth-name-field" style="display:none">
+            <label for="auth-name">Ваше имя</label>
+            <input id="auth-name" type="text" placeholder="Иван Иванов" />
+          </div>
+          <div>
+            <label for="auth-phone">Телефон</label>
+            <input id="auth-phone" type="tel" placeholder="+7 (999) 123-45-67" required />
+            <p id="auth-phone-error" class="form-error" style="display:none">Введите номер в формате +7XXXXXXXXXX или 8XXXXXXXXXX</p>
+          </div>
+          <div>
+            <label for="auth-password">Пароль</label>
+            <input id="auth-password" type="password" placeholder="Минимум 6 символов" required />
+          </div>
+          <p id="auth-error" class="form-error" style="display:none"></p>
+          <button class="btn btn-primary" type="submit" style="width:100%" id="auth-submit">Войти</button>
+        </form>
+        <p class="small muted" style="margin-top:12px;text-align:center">
+          <a href="#" id="auth-toggle">Нет аккаунта? Зарегистрируйтесь</a>
+        </p>
+      </div>
+    </div>
+
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
