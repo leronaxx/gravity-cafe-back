@@ -277,7 +277,7 @@ export async function searchMenu(args, pool) {
     params
   );
 
-  return {
+  const result = {
     found: rows.length,
     filters: {
       query: args.query || null,
@@ -289,6 +289,31 @@ export async function searchMenu(args, pool) {
     },
     items: rows.map(formatMenuItem),
   };
+
+  // Подсказка модели при пустом результате.
+  //
+  // Зачем: небольшие локальные модели иногда добавляют фильтр, о котором гость
+  // не просил (например, «category: meals» на вопрос «что есть до 300 ккал»),
+  // получают пустой список и делают неверный вывод «таких блюд нет». Явная
+  // подсказка позволяет агенту исправиться на следующем шаге цикла.
+  if (!rows.length && conditions.length > 0) {
+    const narrowing = [];
+    if (category) narrowing.push("category");
+    if (args.query) narrowing.push("query");
+
+    if (narrowing.length) {
+      result.hint =
+        `Ничего не найдено при фильтрах: ${narrowing.join(", ")}. ` +
+        "Не утверждай, что таких блюд нет в меню: вызови search_menu снова без этих фильтров " +
+        "(гость о них не просил) либо ответь по снимку меню из системного промпта.";
+    } else {
+      result.hint =
+        "Ничего не найдено при заданных ограничениях (цена, калорийность, состав). " +
+        "Честно скажи, что под такие ограничения позиций нет, и предложи ослабить условие.";
+    }
+  }
+
+  return result;
 }
 
 /**

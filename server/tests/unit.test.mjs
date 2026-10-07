@@ -183,6 +183,29 @@ test("search_menu не подставляет произвольный ORDER BY 
   assert.match(pool.calls[0].sql, /ORDER BY m\.calories ASC NULLS LAST/, "должна примениться сортировка по умолчанию");
 });
 
+test("пустой результат поиска сопровождается подсказкой для модели", async () => {
+  const emptyMenu = [{ match: /FROM menu_items m[\s\S]*JOIN categories c/, rows: [] }];
+
+  // Случай, который реально ломал демонстрацию: модель сама добавила
+  // category: "meals" на вопрос «какие блюда до 300 ккал?» и получила пусто.
+  const narrow = await searchMenu(
+    { category: "meals", max_calories: 300, limit: 5 },
+    createFakePool(emptyMenu)
+  );
+  assert.equal(narrow.found, 0);
+  assert.match(narrow.hint, /category/, "модель должна получить подсказку убрать выдуманный фильтр");
+  assert.match(narrow.hint, /Не утверждай/);
+
+  // А вот если ограничение задал сам гость — подсказка должна быть другой.
+  const strict = await searchMenu({ max_calories: 100, limit: 5 }, createFakePool(emptyMenu));
+  assert.equal(strict.found, 0);
+  assert.match(strict.hint, /ослабить условие/);
+
+  // При непустом результате подсказки быть не должно.
+  const ok = await searchMenu({ max_calories: 300, limit: 5 }, fakePool());
+  assert.equal(ok.hint, undefined);
+});
+
 test("get_menu_item находит блюдо по точному названию и возвращает КБЖУ", async () => {
   const pool = fakePool();
   const result = await getMenuItem({ name: "Тирамису" }, pool);
