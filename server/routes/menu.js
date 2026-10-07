@@ -9,6 +9,7 @@ router.get("/", async (req, res) => {
     let query = `
       SELECT
         m.id, m.name, m.description, m.price, m.prep_time,
+        m.calories, m.proteins, m.fats, m.carbs, m.is_vegetarian, m.allergens,
         c.slug AS category,
         m.image_id,
         CASE WHEN m.image_id IS NOT NULL

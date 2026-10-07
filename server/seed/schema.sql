@@ -1,3 +1,5 @@
+DROP TABLE IF EXISTS assistant_feedback CASCADE;
+DROP TABLE IF EXISTS assistant_messages CASCADE;
 DROP TABLE IF EXISTS order_items CASCADE;
 DROP TABLE IF EXISTS orders CASCADE;
 DROP TABLE IF EXISTS reservations CASCADE;
@@ -33,6 +35,14 @@ CREATE TABLE menu_items (
     category_id INTEGER NOT NULL REFERENCES categories(id),
     image_id    INTEGER REFERENCES images(id),
     prep_time   INTEGER NOT NULL DEFAULT 5,
+    -- Поля ниже добавлены миграцией 001_assistant.sql для ИИ-ассистента:
+    -- они позволяют отвечать на вопросы о калорийности, БЖУ и аллергенах.
+    calories      INTEGER,
+    proteins      NUMERIC(5,1),
+    fats          NUMERIC(5,1),
+    carbs         NUMERIC(5,1),
+    is_vegetarian BOOLEAN NOT NULL DEFAULT FALSE,
+    allergens     TEXT[]  NOT NULL DEFAULT '{}',
     created_at  TIMESTAMP DEFAULT NOW()
 );
 
@@ -102,4 +112,38 @@ CREATE TABLE cafe_settings (
     id      SERIAL PRIMARY KEY,
     key     VARCHAR(100) UNIQUE NOT NULL,
     value   TEXT NOT NULL
+);
+
+-- ============================================================
+--  Таблицы ИИ-ассистента (см. server/assistant/logger.js)
+--  Хранят историю диалогов и оценки гостей — основа для
+--  аналитики в дипломной работе.
+-- ============================================================
+
+CREATE TABLE assistant_messages (
+    id                SERIAL PRIMARY KEY,
+    session_id        VARCHAR(64),
+    role              VARCHAR(16) NOT NULL,
+    content           TEXT NOT NULL,
+    provider          VARCHAR(32),
+    model             VARCHAR(64),
+    latency_ms        INTEGER,
+    prompt_tokens     INTEGER,
+    completion_tokens INTEGER,
+    degraded          BOOLEAN DEFAULT FALSE,
+    sources           JSONB,
+    tool_calls        JSONB,
+    created_at        TIMESTAMP DEFAULT NOW()
+);
+
+CREATE INDEX idx_assistant_messages_session ON assistant_messages (session_id);
+CREATE INDEX idx_assistant_messages_created ON assistant_messages (created_at);
+
+CREATE TABLE assistant_feedback (
+    id          SERIAL PRIMARY KEY,
+    message_id  INTEGER REFERENCES assistant_messages(id) ON DELETE SET NULL,
+    session_id  VARCHAR(64),
+    rating      SMALLINT NOT NULL,
+    comment     TEXT,
+    created_at  TIMESTAMP DEFAULT NOW()
 );

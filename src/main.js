@@ -1,5 +1,7 @@
 import "./styles.css";
+import "./ai-assistant.css"; // оформление чат-виджета ИИ-ассистента
 import { api } from "./api.js";
+import { initAssistant } from "./ai-assistant.js";
 
 function isValidPhone(phone) {
   const cleaned = phone.replace(/[\s\-\(\)]/g, "");
@@ -471,6 +473,8 @@ async function initMenuPage() {
       cartEmpty.style.display = "block";
       prepTime.textContent = "0 минут";
       cartTotal.textContent = "0 ₽";
+      // Сообщаем ИИ-ассистенту, что корзина пуста.
+      window.__gravityCart = [];
       return;
     }
 
@@ -532,6 +536,15 @@ async function initMenuPage() {
 
     prepTime.textContent = `${state.maxPrep} минут`;
     cartTotal.textContent = `${total} ₽`;
+
+    // Отдаём состав корзины ИИ-ассистенту (см. src/ai-assistant.js).
+    // Ассистент видит выбор гостя и советует с учётом уже собранного заказа.
+    window.__gravityCart = state.cart
+      .map((entry) => {
+        const item = menuItems.find((m) => m.id === entry.id);
+        return item ? { name: item.name, quantity: entry.qty, price: item.price } : null;
+      })
+      .filter(Boolean);
   }
 
   function addToCart(id) {
@@ -836,4 +849,6 @@ document.addEventListener("DOMContentLoaded", () => {
   initReservationPage();
   initProfilePage();
   initSettings();
+  // ИИ-ассистент кафе: чат-виджет в правом нижнем углу на всех страницах.
+  initAssistant();
 });

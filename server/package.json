@@ -5,7 +5,9 @@
   "type": "module",
   "scripts": {
     "start": "node index.js",
-    "seed": "node seed/seed.js"
+    "seed": "node seed/seed.js",
+    "test": "node --test tests/unit.test.mjs tests/agent-openai.test.mjs",
+    "test:db": "node tests/db.e2e.mjs"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",
