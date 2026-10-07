@@ -66,6 +66,21 @@ export function shouldAnswerDeterministically(message) {
   return DETERMINISTIC_INTENTS.has(detectIntent(message));
 }
 
+/**
+ * Признаки того, что модель вернула гостю служебный текст вместо ответа.
+ *
+ * Небольшие локальные модели иногда копируют в ответ формулировки из
+ * результатов инструментов («вызови search_menu снова без этих фильтров»)
+ * или из промпта. Показывать такое гостю нельзя, поэтому такой ответ
+ * заменяется точным ответом детерминированного поиска.
+ */
+const SERVICE_TEXT_MARKERS =
+  /(вызови\s+(search_menu|инструмент)|не утверждай|found:\s*0|tool_call|search_menu снова|системн(ый|ого) промпт|снимку меню)/i;
+
+export function looksLikeServiceText(reply) {
+  return SERVICE_TEXT_MARKERS.test(String(reply || ""));
+}
+
 /** Готовит детерминированный ответ и приводит его к общему формату. */
 async function deterministicAnswer({ pool, message, context, knowledge }) {
   const result = await fallbackAnswer({ message, pool, retrieve, context });
@@ -179,7 +194,7 @@ export async function runAssistant({
 
   // Гибридная маршрутизация: точные факты — детерминированным поиском,
   // свободный диалог — языковой моделью. Подробности в комментарии выше.
-  const route = shouldAnswerDeterministically(text) ? "deterministic" : "llm";
+  let route = shouldAnswerDeterministically(text) ? "deterministic" : "llm";
 
   let provider = { name: "knowledge-search", model: "поиск по базе", supportsTools: false };
   let degraded = false;
@@ -244,6 +259,15 @@ export async function runAssistant({
     const result = await fallbackFromProviderError({ pool, message: text, context: cleanContext, knowledge });
     reply = result.content;
     meta = result.meta || null;
+  }
+
+  // Модель вернула служебный текст вместо ответа — подменяем точным ответом.
+  if (route === "llm" && looksLikeServiceText(reply)) {
+    logger.warn?.("[assistant] модель вернула служебный текст, отвечаю детерминированно");
+    const safe = await deterministicAnswer({ pool, message: text, context: cleanContext, knowledge });
+    reply = safe.content;
+    meta = { intent: safe.intent, internalToolCalls: safe.toolCalls, sources: safe.sources };
+    route = "deterministic";
   }
 
   const latencyMs = Date.now() - startedAt;
@@ -328,7 +352,7 @@ export async function* streamAssistant({
   const { knowledge, messages, context: cleanContext } = await prepare({ pool, message: text, history, context });
 
   // Та же гибридная маршрутизация, что и в runAssistant.
-  const route = shouldAnswerDeterministically(text) ? "deterministic" : "llm";
+  let route = shouldAnswerDeterministically(text) ? "deterministic" : "llm";
 
   let provider = { name: "knowledge-search", model: "поиск по базе", supportsTools: false };
   let degraded = false;
@@ -436,6 +460,18 @@ export async function* streamAssistant({
     const result = await fallbackFromProviderError({ pool, message: text, context: cleanContext, knowledge });
     reply = result.content;
     meta = result.meta || null;
+    yield { type: "reset" };
+    yield { type: "delta", text: reply };
+  }
+
+  // Та же защита, что и в runAssistant: чистим уже показанный черновик
+  // и отдаём точный ответ детерминированного поиска.
+  if (route === "llm" && looksLikeServiceText(reply)) {
+    logger.warn?.("[assistant] модель вернула служебный текст, отвечаю детерминированно");
+    const safe = await deterministicAnswer({ pool, message: text, context: cleanContext, knowledge });
+    reply = safe.content;
+    meta = { intent: safe.intent, internalToolCalls: safe.toolCalls, sources: safe.sources };
+    route = "deterministic";
     yield { type: "reset" };
     yield { type: "delta", text: reply };
   }

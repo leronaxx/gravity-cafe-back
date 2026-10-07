@@ -64,11 +64,11 @@ export function formatMenuSnapshot(items) {
     grouped.get(key).push(item);
   }
 
-  // Компактный формат: «Название цена/ккал/минуты» и пометка «в» для
-  // вегетарианских блюд. Одна строка на раздел вместо строки на блюдо —
-  // это заметно сокращает промпт, а значит и время ответа локальной модели:
-  // обработка промпта на слабом компьютере занимает больше времени, чем сама
-  // генерация текста.
+  // Одна строка на раздел вместо строки на блюдо — это заметно сокращает
+  // промпт, а значит и время ответа локальной модели (обработка промпта
+  // на слабом компьютере занимает больше времени, чем сама генерация).
+  // Единицы измерения указываем у каждого числа: без них небольшие модели
+  // путают поля и называют цену калорийностью.
   const lines = [];
   for (const [category, list] of grouped) {
     const rows = list
@@ -76,12 +76,12 @@ export function formatMenuSnapshot(items) {
         const kcal = item.kcal ?? item.calories ?? "?";
         const minutes = item.min ?? item.prep_time ?? "?";
         const vegetarian = item.veg ?? item.is_vegetarian ?? false;
-        return `${item.name} ${item.price}/${kcal}/${minutes}${vegetarian ? "в" : ""}`;
+        return `${item.name} ${item.price}₽ ${kcal}ккал ${minutes}мин${vegetarian ? " в" : ""}`;
       })
       .join("; ");
     lines.push(`${categoryNames[category] || category}: ${rows}`);
   }
-  return `Формат: Название цена(₽)/калории(ккал)/время(мин), «в» — вегетарианское.\n${lines.join("\n")}`;
+  return lines.join("\n");
 }
 
 /** Контекст страницы и корзины гостя (передаёт фронтенд). */

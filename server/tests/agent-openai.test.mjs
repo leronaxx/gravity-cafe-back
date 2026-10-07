@@ -187,7 +187,7 @@ test("в системный промпт попадают база знаний 
   assert.equal(systemPrompt.role, "system");
   assert.match(systemPrompt.content, /Gravity Café/);
   assert.match(systemPrompt.content, /АКТУАЛЬНОЕ МЕНЮ ИЗ БАЗЫ ДАННЫХ/);
-  assert.match(systemPrompt.content, /Тирамису 450\/420\/5в/, "меню берётся из базы данных (компактный формат)");
+  assert.match(systemPrompt.content, /Тирамису 450₽ 420ккал 5мин/, "меню берётся из базы данных");
   assert.ok(systemPrompt.content.length > 1500, "промпт должен содержать найденные факты");
 });
 

@@ -24,7 +24,7 @@ const { normalizeCategory, normalizeAllergen, searchMenu, getMenuItem, buildMenu
 const { normalizeToolCalls, prepareMessages, createOpenAIProvider } = await import("../assistant/providers.js");
 const { detectIntent, extractNumber, fallbackAnswer } = await import("../assistant/fallback.js");
 const { formatMenuSnapshot, buildSystemPrompt } = await import("../assistant/prompt.js");
-const { runAssistant, streamAssistant, invalidateMenuCache, shouldAnswerDeterministically } =
+const { runAssistant, streamAssistant, invalidateMenuCache, shouldAnswerDeterministically, looksLikeServiceText } =
   await import("../assistant/agent.js");
 
 /* ------------------------------------------------------------------ *
@@ -182,6 +182,48 @@ test("search_menu не подставляет произвольный ORDER BY 
   await searchMenu({ sort_by: "price; DROP TABLE menu_items" }, pool);
   assert.doesNotMatch(pool.calls[0].sql, /DROP TABLE/);
   assert.match(pool.calls[0].sql, /ORDER BY m\.calories ASC NULLS LAST/, "должна примениться сортировка по умолчанию");
+});
+
+test("пустые (null) аргументы модели не превращаются в фильтры", async () => {
+  // Языковые модели часто заполняют все поля схемы и присылают null для
+  // неиспользуемых фильтров. Раньше null превращался в 0, и фильтр
+  // «цена не больше 0 ₽» отсекал всё меню: ассистент отвечал «блюд нет»
+  // на вопрос «что посоветуете к кофе?».
+  const pool = fakePool();
+  await searchMenu(
+    {
+      query: "кофе",
+      category: "drinks",
+      max_price: null,
+      max_calories: null,
+      min_proteins: null,
+      vegetarian_only: false,
+      exclude_allergens: [],
+    },
+    pool
+  );
+
+  const { sql, params } = pool.calls[0];
+  assert.doesNotMatch(sql, /m\.price <=/, "null не должен становиться фильтром по цене");
+  assert.doesNotMatch(sql, /m\.calories <=/, "null не должен становиться фильтром по калориям");
+  assert.doesNotMatch(sql, /m\.proteins >=/, "null не должен становиться фильтром по белкам");
+  assert.match(sql, /LOWER\(m\.name\) LIKE \$1/, "поисковый запрос должен примениться");
+  assert.match(sql, /c\.slug = \$2/, "раздел меню должен примениться");
+  assert.deepEqual(params, ["%кофе%", "drinks", 5]);
+});
+
+test("служебный текст, попавший в ответ модели, распознаётся", () => {
+  // Реальный случай с локальной моделью: она скопировала подсказку из
+  // результата инструмента прямо в ответ гостю.
+  assert.equal(
+    looksLikeServiceText(
+      "Ничего не найдено при фильтрах: category, query. Не утверждай, что таких блюд нет в меню: вызови search_menu снова без этих фильтров."
+    ),
+    true
+  );
+  assert.equal(looksLikeServiceText("Вызови search_menu снова"), true);
+  assert.equal(looksLikeServiceText("В тирамису 420 ккал, в составе молоко и глютен."), false);
+  assert.equal(looksLikeServiceText(""), false);
 });
 
 test("пустой результат поиска сопровождается подсказкой для модели", async () => {
@@ -400,7 +442,7 @@ test("системный промпт содержит правила, знан�
   assert.match(prompt, /ТОЛЬКО на русском языке/);
   assert.match(prompt, /не выдумывай/i);
   assert.match(prompt, /Пушкинская/, "в промпт должны попасть найденные факты (RAG)");
-  assert.match(prompt, /Тирамису 450\/420\/5в/, "в промпт попадает реальное меню из БД (компактный формат)");
+  assert.match(prompt, /Тирамису 450₽ 420ккал 5мин/, "в промпт попадает реальное меню из БД");
   assert.match(prompt, /Латте × 2/, "в промпт попадает контекст корзины гостя");
 });
 

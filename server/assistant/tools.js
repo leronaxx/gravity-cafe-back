@@ -191,6 +191,21 @@ function clampLimit(value, fallback = 5, max = 20) {
   return Math.min(parsed, max);
 }
 
+/**
+ * Превращает аргумент модели в число или в null.
+ *
+ * Важный случай: языковые модели часто заполняют ВСЕ поля схемы и присылают
+ * null для неиспользуемых фильтров. Нельзя проверять их через
+ * Number.isFinite(Number(value)): Number(null) === 0, и тогда фильтр
+ * «цена не больше 0 ₽» отсекает всё меню, а ассистент отвечает, что блюд нет.
+ * Именно эта ошибка ломала ответ на вопрос «что посоветуете к кофе?».
+ */
+function toFiniteNumber(value) {
+  if (value === null || value === undefined || value === "") return null;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
 const SORT_COLUMNS = {
   price: "m.price ASC",
   calories: "m.calories ASC NULLS LAST",
@@ -239,18 +254,21 @@ export async function searchMenu(args, pool) {
     conditions.push(`c.slug = $${params.length}`);
   }
 
-  if (Number.isFinite(Number(args.max_price))) {
-    params.push(Number(args.max_price));
+  const maxPrice = toFiniteNumber(args.max_price);
+  if (maxPrice !== null) {
+    params.push(maxPrice);
     conditions.push(`m.price <= $${params.length}`);
   }
 
-  if (Number.isFinite(Number(args.max_calories))) {
-    params.push(Number(args.max_calories));
+  const maxCalories = toFiniteNumber(args.max_calories);
+  if (maxCalories !== null) {
+    params.push(maxCalories);
     conditions.push(`m.calories <= $${params.length}`);
   }
 
-  if (Number.isFinite(Number(args.min_proteins))) {
-    params.push(Number(args.min_proteins));
+  const minProteins = toFiniteNumber(args.min_proteins);
+  if (minProteins !== null) {
+    params.push(minProteins);
     conditions.push(`m.proteins >= $${params.length}`);
   }
 
