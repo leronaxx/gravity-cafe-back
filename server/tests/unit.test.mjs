@@ -308,6 +308,28 @@ test("fallback честно признаётся, когда не знает о�
   assert.match(result.reply, /\+7 \(495\) 123-45-67/, "должен предложить позвонить в кафе");
 });
 
+test("фраза «до 300 ккал» не превращается в ограничение по цене", async () => {
+  const pool = fakePool();
+  await fallbackAnswer({ message: "Есть ли блюда до 300 ккал?", pool, retrieve });
+
+  const searchCall = pool.calls.find((call) => /FROM menu_items m[\s\S]*JOIN categories c/.test(call.sql));
+  assert.ok(searchCall, "должен выполниться поиск по меню");
+  assert.match(searchCall.sql, /m\.calories <= \$1/, "калорийность должна ограничиваться");
+  assert.doesNotMatch(searchCall.sql, /m\.price <=/, "о цене гость не спрашивал — фильтра по цене быть не должно");
+  assert.deepEqual(searchCall.params, [300, 5]);
+});
+
+test("фраза «дешевле 400 рублей» ограничивает только цену", async () => {
+  const pool = fakePool();
+  await fallbackAnswer({ message: "Что у вас есть дешевле 400 рублей?", pool, retrieve });
+
+  const searchCall = pool.calls.find((call) => /FROM menu_items m[\s\S]*JOIN categories c/.test(call.sql));
+  assert.ok(searchCall, "должен выполниться поиск по меню");
+  assert.match(searchCall.sql, /m\.price <= \$1/, "цена должна ограничиваться");
+  assert.doesNotMatch(searchCall.sql, /m\.calories <=/, "о калориях гость не спрашивал");
+  assert.deepEqual(searchCall.params, [400, 5]);
+});
+
 /* ------------------------------------------------------------------ *
  *  5. Промпт
  * ------------------------------------------------------------------ */

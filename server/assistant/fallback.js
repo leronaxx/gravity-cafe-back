@@ -39,8 +39,23 @@ const INTENTS = [
   { id: "menu_overview", patterns: [/^меню/i, /что (у вас )?есть/i, /какие (блюда|напитки|десерты|позиции)/i, /покажи меню/i] },
 ];
 
+/**
+ * Явное числовое ограничение: «до 300 ккал», «дешевле 400 рублей».
+ * Такие фразы важнее общего вопроса про меню: гостю нужен отфильтрованный
+ * список, а не обзор разделов.
+ */
+const NUMERIC_CONSTRAINT = /(до|дешевле|не дороже|меньше|максимум)\s*\d{2,5}/i;
+
+/** Слова про часы работы — чтобы «работаете до 23?» не считалось ограничением цены. */
+const TIME_WORDS = /(работ|час|график|открыт|закрыт)/i;
+
 export function detectIntent(message) {
   const text = String(message || "").trim();
+
+  if (NUMERIC_CONSTRAINT.test(text) && !TIME_WORDS.test(text)) {
+    return /(ккал|калори|кбжу|белк|жир|углевод)/i.test(text) ? "calories" : "price";
+  }
+
   for (const intent of INTENTS) {
     if (intent.patterns.some((pattern) => pattern.test(text))) return intent.id;
   }
@@ -229,8 +244,14 @@ export async function fallbackAnswer({ message, pool, retrieve, context }) {
 
   // --- Калории / КБЖУ ---
   if (intent === "calories" || intent === "price") {
-    const maxCalories = extractNumber(text, ["ккал", "калори"]);
-    const maxPrice = extractNumber(text, ["руб", "₽"]);
+    // Ограничение ищем только в той величине, о которой гость и спрашивает.
+    // Иначе фраза «блюда до 300 ккал» воспринималась бы ещё и как «до 300 ₽»:
+    // число 300 без единицы измерения неоднозначно.
+    const mentionsCalories = /(ккал|калори|кбжу|белк|жир|углевод|лёгк|легк|низкокалор)/i.test(text);
+    const mentionsPrice = /(руб|₽|цен|стоит|стоимость|дешев|бюджет|дорог|недорог)/i.test(text);
+
+    const maxCalories = mentionsCalories ? extractNumber(text, ["ккал", "калори"]) : null;
+    const maxPrice = mentionsPrice ? extractNumber(text, ["руб", "₽"]) : null;
     const nameMatch = /(калори|кбжу|белк|жир|углевод|цена|стоит|стоимость)/i.test(text)
       ? text
           .replace(/(сколько|калорий|калорийность|калории|ккал|кбжу|белков|белки|жиров|жиры|углеводов|углеводы|цена|стоит|стоимость|в|у|вас|блюде|напитке|\?)/gi, " ")
@@ -271,7 +292,9 @@ export async function fallbackAnswer({ message, pool, retrieve, context }) {
       sources,
       toolCalls,
       reply:
-        (filterText ? `Вот позиции ${filterText}, от самых лёгких:\n\n` : "Самые лёгкие позиции меню:\n\n") +
+        (filterText
+          ? `Вот позиции ${filterText}${maxCalories ? ", от самых лёгких" : ""}:\n\n`
+          : "Самые лёгкие позиции меню:\n\n") +
         bulletList(items) +
         `\n\nНазовите конкретное блюдо — и я покажу полное КБЖУ.`,
     };
