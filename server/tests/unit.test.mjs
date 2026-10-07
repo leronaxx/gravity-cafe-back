@@ -24,7 +24,8 @@ const { normalizeCategory, normalizeAllergen, searchMenu, getMenuItem, buildMenu
 const { normalizeToolCalls, prepareMessages, createOpenAIProvider } = await import("../assistant/providers.js");
 const { detectIntent, extractNumber, fallbackAnswer } = await import("../assistant/fallback.js");
 const { formatMenuSnapshot, buildSystemPrompt } = await import("../assistant/prompt.js");
-const { runAssistant, streamAssistant, invalidateMenuCache } = await import("../assistant/agent.js");
+const { runAssistant, streamAssistant, invalidateMenuCache, shouldAnswerDeterministically } =
+  await import("../assistant/agent.js");
 
 /* ------------------------------------------------------------------ *
  *  Заглушка базы данных
@@ -399,7 +400,7 @@ test("системный промпт содержит правила, знан�
   assert.match(prompt, /ТОЛЬКО на русском языке/);
   assert.match(prompt, /не выдумывай/i);
   assert.match(prompt, /Пушкинская/, "в промпт должны попасть найденные факты (RAG)");
-  assert.match(prompt, /Тирамису: 450 ₽, 420 ккал/, "в промпт попадает реальное меню из БД");
+  assert.match(prompt, /Тирамису 450\/420\/5в/, "в промпт попадает реальное меню из БД (компактный формат)");
   assert.match(prompt, /Латте × 2/, "в промпт попадает контекст корзины гостя");
 });
 
@@ -414,15 +415,40 @@ test("formatMenuSnapshot группирует меню по разделам", (
  *  6. Агент целиком (провайдер mock)
  * ------------------------------------------------------------------ */
 
+test("гибридная маршрутизация: точные вопросы — без модели, свободные — к модели", () => {
+  // Точные факты: калории, состав, аллергены, адрес, часы, подбор по условию.
+  for (const question of [
+    "Сколько калорий в тирамису?",
+    "По какому адресу вы находитесь?",
+    "До скольки вы работаете?",
+    "Есть ли вегетарианские блюда?",
+    "У меня аллергия на орехи, что можно?",
+    "Какие блюда до 300 ккал?",
+    "Как забронировать столик?",
+  ]) {
+    assert.equal(shouldAnswerDeterministically(question), true, `должен идти без модели: ${question}`);
+  }
+
+  // Свободный диалог: рекомендации, история, посторонние темы.
+  for (const question of [
+    "Что посоветуете к кофе?",
+    "Расскажите историю вашего кафе",
+    "Напиши реферат по истории России",
+  ]) {
+    assert.equal(shouldAnswerDeterministically(question), false, `должен идти к модели: ${question}`);
+  }
+});
+
 test("runAssistant возвращает ответ, источники и не обращается к языковой модели", async () => {
   invalidateMenuCache();
   const pool = fakePool();
 
   const result = await runAssistant({ pool, message: "Сколько калорий в тирамису?", sessionId: "test-session" });
 
-  assert.equal(result.provider, "mock");
-  // Явно выбранный режим mock — это не деградация, а осознанный режим
-  // «поиск по базе знаний без языковой модели».
+  // Вопрос про калории относится к «точным», поэтому в гибридном режиме
+  // его обслуживает детерминированный поиск, а не языковая модель.
+  assert.equal(result.route, "deterministic");
+  assert.equal(result.provider, "knowledge-search");
   assert.equal(result.degraded, false);
   assert.match(result.reply, /420/);
   assert.ok(result.sources.length > 0, "должны вернуться источники");

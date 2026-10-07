@@ -145,7 +145,7 @@ export function cartNote(context) {
 }
 
 export function describeAllergens(item) {
-  if (!item.allergens || !item.allergens.length) return "аллергены не указаны";
+  if (!item.allergens || !item.allergens.length) return "аллергенов нет";
   return `аллергены: ${item.allergens.join(", ")}`;
 }
 

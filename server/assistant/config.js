@@ -45,6 +45,12 @@ export const assistantConfig = {
 
   // --- Параметры генерации ---
   generation: {
+    // hybrid — точные факты (калории, состав, аллергены, адрес, часы, списки)
+    //          отдаёт детерминированный поиск по базе, а языковая модель
+    //          отвечает на вопросы, где нужен свободный текст (рекомендации,
+    //          история, общие вопросы);
+    // llm    — всегда отвечает языковая модель (все запросы через неё).
+    routing: (process.env.ASSISTANT_ROUTING || "hybrid").toLowerCase(),
     // низкая температура = меньше «фантазии», для справочных ответов это важно
     temperature: Number.parseFloat(process.env.ASSISTANT_TEMPERATURE || "0.3"),
     maxTokens: num(process.env.ASSISTANT_MAX_TOKENS, 700),

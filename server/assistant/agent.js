@@ -25,6 +25,61 @@ import { TOOL_SPECS, executeTool, buildMenuSnapshot } from "./tools.js";
 import { buildSystemPrompt, buildMessages } from "./prompt.js";
 import { resolveProvider } from "./providers.js";
 import { logExchange } from "./logger.js";
+import { fallbackAnswer, detectIntent } from "./fallback.js";
+
+/* ------------------------------------------------------------------ *
+ *  Гибридная маршрутизация
+ * ------------------------------------------------------------------ */
+
+/**
+ * Вопросы, ответ на которые обязан быть точным: калорийность, состав,
+ * аллергены, цены, подбор по ограничениям, адрес, часы работы, контакты.
+ *
+ * Такие запросы обслуживает детерминированный поиск (fallback.js): он берёт
+ * данные из PostgreSQL и базы знаний и не может «придумать» цифру. Языковая
+ * модель подключается там, где нужен живой текст: рекомендации, история кафе,
+ * общие вопросы.
+ *
+ * Почему так: небольшие локальные модели (3–7 млрд параметров) иногда путают
+ * инструменты и факты — например, называют вегетарианские блюда «не
+ * содержащими молока». Для калорийности и аллергенов цена ошибки высока
+ * (это здоровье гостя), поэтому такие ответы генерации мы не доверяем.
+ */
+const DETERMINISTIC_INTENTS = new Set([
+  "calories",
+  "price",
+  "allergens",
+  "vegetarian",
+  "address",
+  "hours",
+  "contacts",
+  "menu_overview",
+  "popular",
+  "reservation",
+  "ordering",
+  "amenities",
+]);
+
+/** Нужно ли отвечать без языковой модели (только точные данные). */
+export function shouldAnswerDeterministically(message) {
+  if (assistantConfig.generation.routing !== "hybrid") return false;
+  return DETERMINISTIC_INTENTS.has(detectIntent(message));
+}
+
+/** Готовит детерминированный ответ и приводит его к общему формату. */
+async function deterministicAnswer({ pool, message, context, knowledge }) {
+  const result = await fallbackAnswer({ message, pool, retrieve, context });
+  return {
+    content: result.reply,
+    toolCalls: result.toolCalls,
+    sources: result.sources.length
+      ? result.sources
+      : knowledge.map((chunk) => ({
+          id: chunk.id, title: chunk.title, topic: chunk.topic, score: chunk.score,
+        })),
+    intent: result.intent,
+  };
+}
 
 /* ------------------------------------------------------------------ *
  *  Кэш выжимки меню
@@ -122,10 +177,16 @@ export async function runAssistant({
 
   const { knowledge, messages, context: cleanContext } = await prepare({ pool, message: text, history, context });
 
-  const { provider, degraded, reason } = await resolveProvider({
-    deps: { pool, retrieve },
-    logger,
-  });
+  // Гибридная маршрутизация: точные факты — детерминированным поиском,
+  // свободный диалог — языковой моделью. Подробности в комментарии выше.
+  const route = shouldAnswerDeterministically(text) ? "deterministic" : "llm";
+
+  let provider = { name: "knowledge-search", model: "поиск по базе", supportsTools: false };
+  let degraded = false;
+  let reason = null;
+  if (route === "llm") {
+    ({ provider, degraded, reason } = await resolveProvider({ deps: { pool, retrieve }, logger }));
+  }
 
   const usedTools = [];
   let reply = "";
@@ -133,7 +194,11 @@ export async function runAssistant({
   let meta = null;
 
   try {
-    if (!provider.supportsTools) {
+    if (route === "deterministic") {
+      const result = await deterministicAnswer({ pool, message: text, context: cleanContext, knowledge });
+      reply = result.content;
+      meta = { intent: result.intent, internalToolCalls: result.toolCalls, sources: result.sources };
+    } else if (!provider.supportsTools) {
       // Режим без языковой модели: детерминированный ответ.
       const result = await provider.chat(messages, { context: cleanContext });
       reply = result.content;
@@ -190,8 +255,9 @@ export async function runAssistant({
     sources,
     toolCalls: allTools,
     usage,
-    provider: degraded ? "mock" : provider.name,
-    model: degraded ? "knowledge-search" : provider.model,
+    route,
+    provider: route === "deterministic" ? "knowledge-search" : degraded ? "mock" : provider.name,
+    model: route === "deterministic" ? "детерминированный поиск" : degraded ? "knowledge-search" : provider.model,
     degraded,
     degradedReason: degraded ? reason : null,
     latencyMs,
@@ -260,12 +326,22 @@ export async function* streamAssistant({
   }
 
   const { knowledge, messages, context: cleanContext } = await prepare({ pool, message: text, history, context });
-  const { provider, degraded, reason } = await resolveProvider({ deps: { pool, retrieve }, logger });
+
+  // Та же гибридная маршрутизация, что и в runAssistant.
+  const route = shouldAnswerDeterministically(text) ? "deterministic" : "llm";
+
+  let provider = { name: "knowledge-search", model: "поиск по базе", supportsTools: false };
+  let degraded = false;
+  let reason = null;
+  if (route === "llm") {
+    ({ provider, degraded, reason } = await resolveProvider({ deps: { pool, retrieve }, logger }));
+  }
 
   yield {
     type: "meta",
-    provider: degraded ? "mock" : provider.name,
-    model: degraded ? "knowledge-search" : provider.model,
+    route,
+    provider: route === "deterministic" ? "knowledge-search" : degraded ? "mock" : provider.name,
+    model: route === "deterministic" ? "детерминированный поиск" : degraded ? "knowledge-search" : provider.model,
     degraded,
     degradedReason: degraded ? reason : null,
     sources: knowledge.map((chunk) => ({ id: chunk.id, title: chunk.title, topic: chunk.topic, score: chunk.score })),
@@ -277,7 +353,19 @@ export async function* streamAssistant({
   let meta = null;
 
   try {
-    if (!provider.supportsTools) {
+    if (route === "deterministic") {
+      // Точный ответ считаем сразу и отдаём его так же, как поток от модели,
+      // чтобы фронтенд не знал разницы.
+      const result = await deterministicAnswer({ pool, message: text, context: cleanContext, knowledge });
+      reply = result.content;
+      meta = { intent: result.intent, internalToolCalls: result.toolCalls, sources: result.sources };
+      for (const call of result.toolCalls) {
+        yield { type: "tool", name: call.name, arguments: call.arguments };
+      }
+      for (const piece of reply.match(/[\s\S]{1,24}/g) || [reply]) {
+        yield { type: "delta", text: piece };
+      }
+    } else if (!provider.supportsTools) {
       // Mock-провайдер тоже умеет стримить: отдаёт текст порциями.
       for await (const event of provider.chatStream(messages, { context: cleanContext })) {
         if (event.type === "delta") {
@@ -363,8 +451,9 @@ export async function* streamAssistant({
     sources,
     toolCalls: allTools,
     usage,
-    provider: degraded ? "mock" : provider.name,
-    model: degraded ? "knowledge-search" : provider.model,
+    route,
+    provider: route === "deterministic" ? "knowledge-search" : degraded ? "mock" : provider.name,
+    model: route === "deterministic" ? "детерминированный поиск" : degraded ? "knowledge-search" : provider.model,
     degraded,
     degradedReason: degraded ? reason : null,
     latencyMs,

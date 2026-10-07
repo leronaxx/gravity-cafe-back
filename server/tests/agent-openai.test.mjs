@@ -97,6 +97,10 @@ process.env.OPENAI_BASE_URL = `http://127.0.0.1:${port}/v1`;
 process.env.OPENAI_API_KEY = "test-key";
 process.env.OPENAI_MODEL = "stub-model";
 process.env.ASSISTANT_LOGGING = "false";
+// Этот файл проверяет путь через языковую модель, поэтому гибридную
+// маршрутизацию отключаем: иначе фактические вопросы уходили бы
+// в детерминированный поиск и не доходили до модели.
+process.env.ASSISTANT_ROUTING = "llm";
 
 const { runAssistant, streamAssistant, invalidateMenuCache } = await import("../assistant/agent.js");
 
@@ -183,7 +187,7 @@ test("в системный промпт попадают база знаний 
   assert.equal(systemPrompt.role, "system");
   assert.match(systemPrompt.content, /Gravity Café/);
   assert.match(systemPrompt.content, /АКТУАЛЬНОЕ МЕНЮ ИЗ БАЗЫ ДАННЫХ/);
-  assert.match(systemPrompt.content, /Тирамису: 450 ₽, 420 ккал/, "меню берётся из базы данных");
+  assert.match(systemPrompt.content, /Тирамису 450\/420\/5в/, "меню берётся из базы данных (компактный формат)");
   assert.ok(systemPrompt.content.length > 1500, "промпт должен содержать найденные факты");
 });
 

@@ -392,9 +392,24 @@
     return { wrapper, bubble };
   }
 
-  function addSources(wrapper, sources, tools) {
+  function addSources(wrapper, sources, tools, route) {
     if (!pageAlive() || !wrapper) return;
     const chips = [];
+
+    // В отладочном режиме видно, кто подготовил ответ: детерминированный
+    // поиск по базе или языковая модель. Удобно показывать на защите.
+    if (CONFIG.debug && route) {
+      const fromSearch = route === "deterministic";
+      const chip = el(
+        "span",
+        "ga-source-chip ga-tool",
+        fromSearch ? "🔎 поиск по базе" : "🧠 языковая модель"
+      );
+      chip.title = fromSearch
+        ? "Ответ собран детерминированным поиском по базе данных — без генерации"
+        : "Ответ сгенерирован языковой моделью на основе данных из базы";
+      chips.push(chip);
+    }
 
     for (const source of (sources || []).slice(0, 3)) {
       const chip = el("span", "ga-source-chip", `📚 ${source.title}`);
@@ -568,7 +583,7 @@
             ? event.toolCalls
             : JSON.parse(target.dataset.tools || "[]");
 
-          addSources(message, sources, tools);
+          addSources(message, sources, tools, event.route);
           if (event.messageId) addFeedback(message, event.messageId);
 
           state.streamedText = "";
