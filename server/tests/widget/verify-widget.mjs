@@ -10,16 +10,25 @@
  */
 
 import path from "node:path";
+import fs from "node:fs";
 import { fileURLToPath } from "node:url";
+import { JSDOM } from "jsdom";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 // Путь от server/tests/widget до корня репозитория gravity-cafe-back
 const BACK_ROOT = path.resolve(__dirname, "../../..");
+// Репозиторий сайта обычно лежит рядом; папка может называться иначе,
+// поэтому путь можно переопределить переменной окружения GRAVITY_FRONT_DIR.
+const FRONT_ROOT = process.env.GRAVITY_FRONT_DIR || path.resolve(BACK_ROOT, "../gravity-cafe-front");
+const WIDGET = path.join(FRONT_ROOT, "ai-assistant.js");
 
-import fs from "node:fs";
-import { JSDOM } from "jsdom";
+if (!fs.existsSync(WIDGET)) {
+  console.error(`Не найден файл виджета: ${WIDGET}`);
+  console.error("Укажите путь к репозиторию сайта, например:");
+  console.error("    GRAVITY_FRONT_DIR=/путь/к/gravity-cafe-front npm run test:widget");
+  process.exit(1);
+}
 
-const WIDGET = path.resolve(BACK_ROOT, "../gravity-cafe-front/ai-assistant.js");
 const source = fs.readFileSync(WIDGET, "utf8");
 
 let failures = 0;
